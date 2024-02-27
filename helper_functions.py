@@ -55,46 +55,71 @@ def generate_vertical_bar_graph(df, variable,
     ax.set_facecolor(SLIDE_BACKGROUND_COLOR) 
 
 
-def generate_horizontal_bar_graph(df, variable,
+def generate_horizontal_bar_graph(df, 
+                                  categorical_variable,
+                                  variable_x="count",
                                   ax=None,
                                   chart_title="", 
                                   variable_readable="", 
                                   variable_labels={}):
+    '''
+    Create a horizontal bar graph showing variable_x or count 
+    for each class of a categorical variable
+    '''
     if(not(variable_readable)):
-        variable_readable = variable
+        variable_readable = categorical_variable
 
     if not(variable_labels):
-        variable_labels={key: key for key in df[variable].unique().tolist()}
+        variable_labels={key: key for key in df[categorical_variable].unique().tolist()}
 
     if not(ax):
         fig, ax = plt.subplots(figsize=(6, 12), facecolor=SLIDE_BACKGROUND_COLOR)
 
+    if variable_x == "count":
+        variable_distribution = (df[categorical_variable]
+                                .map(variable_labels)
+                                .value_counts(normalize=True) * 100
+                                )
+        df = (variable_distribution
+              .sort_values(ascending=True)
+              .reset_index()
+              )
+        # Rename column 'index' to categorical_variable
+        df = df.rename(
+            columns={categorical_variable: variable_x,
+                     'index': categorical_variable
+                     })
+        bars = ax.barh(df[categorical_variable],
+                df[variable_x])
+        # Adds percentages above the bars
+        for i, v in enumerate(df[variable_x]):
+            ax.text(v + 1, i, 
+                    f'{int(v)}%', 
+                    ha='left', 
+                    va='center',
+                    fontsize=10)
 
-    variable_distribution = (df[variable]
-                            .map(variable_labels)
-                            .value_counts(normalize=True) * 100
-
-                            )
-    variable_distribution.sort_values(ascending=True, inplace=True)
-
-    
-
-    variable_distribution.plot(kind='barh', ax=ax)
-
-    # Adds percentages above the bars
-    for i, v in enumerate(variable_distribution):
-        ax.text(v + 1, i, 
-                f'{int(v)}%', 
-                ha='left', 
-                va='center',
-                fontsize=10)
+    else:
+        bars = ax.barh(df[categorical_variable],
+                       df[variable_x])
+        # Adds labels above the bars
+        for i, v in enumerate(df[variable_x]):
+            ax.text(v + 1, i, 
+                    f'{int(v)}', 
+                    ha='left', 
+                    va='center',
+                    fontsize=10)
 
     ax.set_title(f'Distribution of {variable_readable}', 
                  fontsize=16, 
                  pad=20, 
                  loc='center')
     ax.set_ylabel(variable_readable)
+    ax.set_yticklabels(df[categorical_variable])
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+    
+    if(ax.get_legend()):
+        ax.get_legend().remove()
     
     ax.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
     ax.spines['top'].set_visible(False)   
