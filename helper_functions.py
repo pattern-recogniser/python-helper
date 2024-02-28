@@ -2,12 +2,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from datetime import datetime
 
 THRESHOLD_CONDITIONS = 3
 SLIDE_BACKGROUND_COLOR = '#212121'
-def get_slide_background_color():
-    return SLIDE_BACKGROUND_COLOR
+
 def generate_vertical_bar_graph(df, variable, 
                                 ax=None,
                                 chart_title="", 
@@ -115,8 +115,7 @@ def generate_horizontal_bar_graph(df,
                  pad=20, 
                  loc='center')
     ax.set_ylabel(variable_readable)
-    ax.set_yticklabels(df[categorical_variable])
-    ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+    # ax.set_yticklabels(df[categorical_variable])
     
     if(ax.get_legend()):
         ax.get_legend().remove()
@@ -191,31 +190,6 @@ def get_beneficiary_age(df, age_variable, reference_date_str):
                              right=False)
     return df
 
-def customise_graph_dark_mode(axis):
-    '''
-    Make sure to run this before setting graph titles
-    '''
-    axis.set_facecolor('black') 
-    axis.set_title('Sample Text', color='grey')
-    axis.set_xlabel('Sample Text', color='grey')
-    axis.set_ylabel('Sample Text', color='grey')
-    axis.tick_params(axis='x', colors='grey')  
-    axis.tick_params(axis='y', colors='grey')  
-    axis.spines['bottom'].set_color('grey') 
-    axis.spines['left'].set_color('grey')   
-    axis.spines['top'].set_visible(False)   
-    axis.spines['right'].set_visible(False) 
-    
-
-def display_dataframe_with_all_rows(df):
-    pd.set_option('display.max_rows', None)
-    pd.set_option('display.max_columns', None)
-#     pd.set_option('display.max_colwidth', 100)
-    print(df)
-    pd.reset_option('display.max_rows')
-    pd.reset_option('display.max_columns')
-#     pd.reset_option('display.max_colwidth')
-
 def combine_conditions(row, columns_to_combine):
     ''' columns_to_combine is a dict'''
     conditions = []
@@ -234,13 +208,112 @@ def combine_conditions(row, columns_to_combine):
     else:
         return 'None'
 
-
 def get_illness_var_type(df):
     df['illness_var_type'] = np.where(
     (df['combined_condition'] == 'Multiple') | (df['combined_condition'] == 'None'),
     df['combined_condition'],
-    'Combination of 2 illnesses')
+    'Combination of 1 or 2 illnesses')
     return df
 
 def apply_currency_formatting(amount):
     return '${:,.0f}'.format(amount)
+
+def generate_boxplot(df,
+                     categorical_variable,
+                     categorical_variable_label,
+                     metric,
+                     metric_label,
+                     ax=None):
+    
+    # Calculate the IQR for each group
+    iqr_values = (df.groupby(categorical_variable)[metric].quantile(0.75) 
+                  - df.groupby(categorical_variable)[metric].quantile(0.25)
+    )
+
+    # Sort the groups by decreasing IQR
+    sorted_conditions = iqr_values.sort_values(ascending=False).index
+
+    if(not ax):
+        fig, ax = plt.subplots(figsize=(12, 30), facecolor=SLIDE_BACKGROUND_COLOR)
+    sns.boxplot(x=metric, 
+                y=categorical_variable, 
+                data=df, 
+                order=sorted_conditions,
+                ax=ax)
+
+    # Customize the plot
+    ax.set_title(f'Distribution of {metric_label} for Each {categorical_variable_label}')
+    ax.set_xlabel(metric_label)
+    ax.set_ylabel(categorical_variable_label)
+
+    ax.spines['top'].set_visible(False)   
+    ax.spines['right'].set_visible(False) 
+    ax.spines['bottom'].set_visible(False) 
+    ax.set_facecolor(SLIDE_BACKGROUND_COLOR) 
+
+def generate_clustered_column(df, 
+                              categorical_variable, 
+                              metric1, 
+                              metric1_label,
+                              metric2,
+                              metric2_label,
+                              ax=None):
+
+    df.sort_values(by=metric1, ascending=True, inplace=True)
+
+    if not(ax):
+        fig, ax = plt.subplots(figsize=(6, 12), facecolor=SLIDE_BACKGROUND_COLOR)
+
+    bar_width = 0.25  # Width of each bar
+    index = range(len(df))
+
+    # Bar for metric2
+    bars_beneficiary_count = ax.barh([i + bar_width for i in index], 
+                                     df[metric2], 
+                                     bar_width, 
+                                     label=metric2_label, 
+                                     color='lightgreen')
+
+    # Bar for metric1
+    bars_cost_per_illness = ax.barh([i + 2 * bar_width for i in index], 
+                                    df[metric1], 
+                                    bar_width, 
+                                    label=metric1_label, 
+                                    color='lightcoral')
+
+    # Set y-axis ticks and labels
+    ax.set_yticks([i + bar_width for i in index])
+    ax.set_yticklabels(df[categorical_variable])
+    ax.spines['top'].set_visible(False)   
+    ax.spines['right'].set_visible(False) 
+    ax.spines['bottom'].set_visible(False) 
+
+    # Set labels and title
+    ax.set_xlabel('Metrics')
+    ax.set_title(f'Metrics for Each {categorical_variable}')
+    ax.legend()
+    ax.set_facecolor(SLIDE_BACKGROUND_COLOR) 
+
+    # Adds labels above the bars for metric1
+    for i, v in enumerate(df[metric1]):
+        ax.text(v + 1,
+                i + 0.5, 
+                f'{int(v)}', 
+                ha='left', 
+                va='center',
+                fontsize=10)
+        
+def subset_df_with_greater_than(df,
+                               variable,
+                               threshold):
+    df2 = df[df[variable] > threshold]
+    return df2
+
+
+def get_2combination_illness(df):
+    filtered_df = df[
+        (df['combined_condition'] != 'Multiple') & 
+        (df['combined_condition'] != 'None')
+        ]
+    return filtered_df
+
