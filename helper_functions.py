@@ -7,6 +7,7 @@ from datetime import datetime
 
 THRESHOLD_CONDITIONS = 3
 SLIDE_BACKGROUND_COLOR = '#212121'
+SAMPLE_PERCENTAGE = 0.05
 
 def generate_vertical_bar_graph(df, variable, 
                                 ax=None,
@@ -316,4 +317,19 @@ def get_2combination_illness(df):
         (df['combined_condition'] != 'None')
         ]
     return filtered_df
+
+# Helper function to calculate cost reduction
+
+def calculate_savings(new_column, 
+                      old_column):
+    total_cost_2years = beneficiary_claims_df['CLM_PMT_AMT'].sum()
+    absolute_difference = sum(old_column) - sum(new_column) 
+    perc_difference = 100 * absolute_difference / total_cost_2years
+    print(f'Perc difference in total cost: {round(perc_difference)}%')
+    absolute_difference_extrapolated = absolute_difference * (1 / SAMPLE_PERCENTAGE)
+    print(f'Reduction in cost in 2yr period: {absolute_difference_extrapolated:,.0f}')
+
+def get_optimised_cost(df):
+    df['optimised_cost'] = (df['beneficiary_count'] * df['optimised_CPM'])
+    return df
 
