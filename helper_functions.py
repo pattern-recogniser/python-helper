@@ -76,6 +76,9 @@ def generate_horizontal_bar_graph(df,
     if not(ax):
         fig, ax = plt.subplots(figsize=(6, 12), facecolor=SLIDE_BACKGROUND_COLOR)
 
+    if not(chart_title):
+        chart_title = f'Distribution of {variable_readable}'
+
     if variable_x == "count":
         variable_distribution = (df[categorical_variable]
                                 .map(variable_labels)
@@ -102,7 +105,10 @@ def generate_horizontal_bar_graph(df,
 
     else:
         bars = ax.barh(df[categorical_variable],
-                       df[variable_x])
+                       df[variable_x]
+                    #    ,color='lightgreen',
+                    #    height=0.25
+                       )
         # Adds labels above the bars
         for i, v in enumerate(df[variable_x]):
             ax.text(v + 1, i, 
@@ -111,7 +117,7 @@ def generate_horizontal_bar_graph(df,
                     va='center',
                     fontsize=10)
 
-    ax.set_title(f'Distribution of {variable_readable}', 
+    ax.set_title(chart_title, 
                  fontsize=16, 
                  pad=20, 
                  loc='center')
@@ -133,8 +139,18 @@ def generate_conditions_summary(df, conditions_readable_map):
     '''
     
     '''
+    # Calculate the prevalence of each condition
+    condition_prevalence = {}
+    for condition_variable_name, condition_contents in conditions_readable_map.items():
+        conditions_map = condition_contents[1]
+        prevalence = df[condition_variable_name].eq(conditions_map['Yes']).mean() * 100
+        condition_prevalence[condition_variable_name] = prevalence
+
+    # Sort conditions based on prevalence
+    sorted_conditions = sorted(condition_prevalence.items(), key=lambda x: x[1], reverse=True)
+
     # Create subplots with one column and as many rows as there are conditions
-    num_conditions = len(conditions_readable_map)
+    num_conditions = len(sorted_conditions)
     fig, axs = plt.subplots(
         nrows=num_conditions, 
         ncols=1, 
@@ -142,23 +158,17 @@ def generate_conditions_summary(df, conditions_readable_map):
         facecolor=SLIDE_BACKGROUND_COLOR
         )
     fig.suptitle('Presence of Chronic Illnesses', fontsize=16)
-    for i, (condition_variable_name, condition_contents) in enumerate(conditions_readable_map.items()):
-        
+    
+    for i, (condition_variable_name, prevalence) in enumerate(sorted_conditions):
+        condition_contents = conditions_readable_map[condition_variable_name]
         condition_readable_name = condition_contents[0]
-        conditions_map = condition_contents[1]
 
-        # Calculate the percentage of 'Yes's in the current condition column
-        percentage_condition = (
-            df[condition_variable_name]
-            .value_counts(normalize=True) * 100
-        ).loc[conditions_map['Yes']]
-
-        axs[i].barh([condition_readable_name], [percentage_condition])
+        axs[i].barh([condition_readable_name], [prevalence])
 
         # Display the percentage label at the bottom
         axs[i].text(x=0,
                     y=0,
-                    s=f'{condition_readable_name}: {percentage_condition:.0f}% ',
+                    s=f'{condition_readable_name}: {prevalence:.0f}% ',
                     ha='right',
                     va='center')
         axs[i].set_xlim(0, 100) 
@@ -175,6 +185,7 @@ def generate_conditions_summary(df, conditions_readable_map):
 
     plt.tight_layout()
     plt.show()
+
 
 def get_beneficiary_age(df, age_variable, reference_date_str):
     df[age_variable] = pd.to_datetime(df[age_variable], format='%Y%m%d')
@@ -258,6 +269,7 @@ def generate_clustered_column(df,
                               metric1_label,
                               metric2,
                               metric2_label,
+                              chart_title,
                               ax=None):
 
     df.sort_values(by=metric1, ascending=True, inplace=True)
@@ -265,6 +277,8 @@ def generate_clustered_column(df,
     if not(ax):
         fig, ax = plt.subplots(figsize=(6, 12), facecolor=SLIDE_BACKGROUND_COLOR)
 
+    if not(chart_title):
+        chart_title = f'Metrics for Each {categorical_variable}'
     bar_width = 0.25  # Width of each bar
     index = range(len(df))
 
@@ -291,7 +305,7 @@ def generate_clustered_column(df,
 
     # Set labels and title
     ax.set_xlabel('Metrics')
-    ax.set_title(f'Metrics for Each {categorical_variable}')
+    ax.set_title(chart_title)
     ax.legend()
     ax.set_facecolor(SLIDE_BACKGROUND_COLOR) 
 
